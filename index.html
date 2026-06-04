@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riso Texturizer — drop an SVG tile, apply the riso look, export</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1ead2; --ink:#2b4b8f; --accent:#cf3f6b; --text:#222a40; --line:rgba(43,75,143,.35);
+    --panel:#fbf7e8;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:"Space Mono",ui-monospace,monospace; color:var(--text);
+        background:var(--paper); min-height:100vh;
+        background-image:radial-gradient(circle, rgba(43,75,143,.05) .5px, transparent .5px); background-size:4px 4px; }
+  header{ padding:18px 24px; border-bottom:1.5px solid var(--ink); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  header h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:22px; color:var(--ink); text-shadow:1.5px 1.5px 0 var(--accent); }
+  header .sub{ font-size:11px; opacity:.6; letter-spacing:.04em; }
+
+  .wrap{ display:grid; grid-template-columns:1fr 340px; gap:0; min-height:calc(100vh - 61px); }
+  @media (max-width:880px){ .wrap{ grid-template-columns:1fr; } }
+
+  /* preview */
+  .stage-wrap{ padding:28px; display:flex; align-items:center; justify-content:center; }
+  .stage{ width:100%; max-width:680px; aspect-ratio:620/380; border:1.5px solid var(--ink);
+          box-shadow:7px 7px 0 rgba(43,75,143,.45); overflow:hidden; position:relative;
+          background-image:linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%);
+          background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; }
+  .stage svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  /* controls */
+  .panel{ border-left:1.5px solid var(--ink); background:var(--panel); padding:18px; overflow-y:auto; }
+  .drop{ border:1.5px dashed var(--ink); padding:18px; text-align:center; font-size:12px; cursor:pointer; margin-bottom:18px; background:#fff; }
+  .drop.over{ background:var(--accent); color:#fff; }
+  .drop b{ display:block; font-family:"Bricolage Grotesque",sans-serif; font-size:14px; margin-bottom:4px; }
+  .drop small{ opacity:.6; }
+  .grp{ margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .grp:last-child{ border:0; }
+  .grp h3{ font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink); margin-bottom:10px; }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; font-size:12px; }
+  .row label{ flex:1; }
+  .row input[type=range]{ flex:1.4; accent-color:var(--ink); }
+  .row input[type=color]{ width:34px; height:24px; border:1.5px solid var(--ink); padding:0; background:none; cursor:pointer; }
+  .row input[type=number]{ width:64px; border:1.5px solid var(--ink); background:#fff; padding:3px 6px; font-family:inherit; font-size:12px; }
+  .row .val{ width:42px; text-align:right; opacity:.7; font-size:11px; }
+  .row input[type=checkbox]{ width:16px; height:16px; accent-color:var(--ink); }
+  .btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:12px; cursor:pointer;
+          border:1.5px solid var(--ink); background:var(--ink); color:var(--paper); padding:9px 8px; box-shadow:2px 2px 0 rgba(43,75,143,.5); }
+  button.ghost{ background:#fff; color:var(--ink); }
+  button:active{ transform:translate(2px,2px); box-shadow:none; }
+  .seg{ display:flex; border:1.5px solid var(--ink); margin-bottom:8px; }
+  .seg button{ flex:1; box-shadow:none; border:0; border-right:1.5px solid var(--ink); background:#fff; color:var(--ink); }
+  .seg button:last-child{ border-right:0; }
+  .seg button.on{ background:var(--ink); color:var(--paper); }
+  .note{ font-size:10.5px; opacity:.55; line-height:1.5; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Riso Texturizer</h1>
+  <span class="sub">丟一張無縫 SVG 磁磚 → 套用 riso 質感 → 輸出 PNG / SVG</span>
+</header>
+
+<div class="wrap">
+  <div class="stage-wrap">
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <div class="panel">
+    <div class="drop" id="drop">
+      <b>丟 SVG 進來</b>
+      <small>或點此選檔 · 建議是 seamless 磁磚</small>
+      <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
+    </div>
+
+    <div class="grp">
+      <h3>來源 Source</h3>
+      <div class="row"><label>磁磚尺寸</label><span class="val" id="tileSize" style="width:auto">—</span></div>
+      <div class="row"><label for="orig">用 SVG 原色 (B 案)</label><input type="checkbox" id="orig"></div>
+      <div class="row"><label for="mono">強制單色 (忽略內建色)</label><input type="checkbox" id="mono" checked></div>
+    </div>
+
+    <div class="grp">
+      <h3>外觀 Look</h3>
+      <div class="row"><label for="transparent">透明紙底 (輸出去背)</label><input type="checkbox" id="transparent"></div>
+      <div class="row"><label>紙色</label><input type="color" id="paper" value="#f1ead2"></div>
+      <div class="row"><label>墨色</label><input type="color" id="ink" value="#2b4b8f"></div>
+      <div class="row"><label>圖案縮放</label><input type="range" id="scale" min="0.3" max="4" step="0.05" value="1"><span class="val" id="scaleV">1.00</span></div>
+      <div class="row"><label>圖案透明度</label><input type="range" id="opac" min="0" max="1" step="0.01" value="0.13"><span class="val" id="opacV">0.13</span></div>
+    </div>
+
+    <div class="grp">
+      <h3>套色錯位 Misregistration</h3>
+      <div class="row"><label for="ghost">啟用</label><input type="checkbox" id="ghost" checked></div>
+      <div class="row"><label>錯位色</label><input type="color" id="accent" value="#cf3f6b"></div>
+      <div class="row"><label>位移 X</label><input type="range" id="ox" min="-12" max="12" step="0.5" value="2.5"><span class="val" id="oxV">2.5</span></div>
+      <div class="row"><label>位移 Y</label><input type="range" id="oy" min="-12" max="12" step="0.5" value="1.8"><span class="val" id="oyV">1.8</span></div>
+      <div class="row"><label>透明度</label><input type="range" id="gop" min="0" max="0.6" step="0.01" value="0.05"><span class="val" id="gopV">0.05</span></div>
+    </div>
+
+    <div class="grp">
+      <h3>顆粒 Grain <span style="opacity:.4;font-weight:400">· nnnoise-style</span></h3>
+      <div class="row"><label>數量</label><input type="range" id="grain" min="0" max="0.6" step="0.01" value="0.12"><span class="val" id="grainV">0.12</span></div>
+      <div class="row"><label>頻率 (粗細)</label><input type="range" id="fine" min="0.2" max="1.4" step="0.05" value="0.65"><span class="val" id="fineV">0.65</span></div>
+      <div class="row"><label>細節 (octaves)</label><input type="range" id="oct" min="1" max="5" step="1" value="3"><span class="val" id="octV">3</span></div>
+      <div class="row"><label>紙感 (relief)</label><input type="range" id="relief" min="0" max="4" step="0.1" value="1.2"><span class="val" id="reliefV">1.2</span></div>
+      <div class="row"><label>光源角度 (elevation)</label><input type="range" id="elev" min="0" max="90" step="1" value="60"><span class="val" id="elevV">60</span></div>
+      <div class="row"><label>打光顏色 (light)</label><input type="color" id="lightcol" value="#ffffff"></div>
+      <div class="row"><label>反光 (specularity)</label><input type="range" id="spec" min="0" max="3" step="0.1" value="0"><span class="val" id="specV">0.0</span></div>
+      <div class="row"><label for="desat">desaturate</label><input type="checkbox" id="desat"></div>
+      <div class="row"><label for="turb">turbulence 型</label><input type="checkbox" id="turb"></div>
+      <p class="note">relief = 0 是乾淨墨點;&gt; 0 用打光做出 nnnoise 那種立體紙張顆粒。噪點已 stitch,無縫拼貼。</p>
+    </div>
+
+    <div class="grp">
+      <h3>輸出 Export</h3>
+      <div class="row"><label>尺寸 px</label>
+        <input type="number" id="ow" value="620" min="16" max="4096">
+        <span>×</span>
+        <input type="number" id="oh" value="380" min="16" max="4096">
+      </div>
+      <div class="seg" id="seg">
+        <button data-x="1" class="on">1×</button>
+        <button data-x="2">2×</button>
+        <button data-x="4">4×</button>
+      </div>
+      <div class="btns">
+        <button id="png">下載 PNG</button>
+        <button id="svg" class="ghost">下載 SVG</button>
+        <button id="copy" class="ghost" style="grid-column:1 / -1">複製 SVG 原始碼</button>
+      </div>
+      <p class="note" id="msg">提示:磁磚要 seamless 才不會有接縫;圖案層用 <code>currentColor</code> 我才能換色,否則勾「用 SVG 原色」。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+// ---- default sample tile (the polka dots, 80x80, currentColor) ----
+const DEFAULT = {
+  tw:80, th:80,
+  inner:`<circle cx="0" cy="0" r="6" fill="currentColor"/><circle cx="40" cy="0" r="6" fill="currentColor"/><circle cx="80" cy="0" r="6" fill="currentColor"/><circle cx="20" cy="40" r="6" fill="currentColor"/><circle cx="60" cy="40" r="6" fill="currentColor"/><circle cx="0" cy="80" r="6" fill="currentColor"/><circle cx="40" cy="80" r="6" fill="currentColor"/><circle cx="80" cy="80" r="6" fill="currentColor"/><circle cx="20" cy="20" r="11" fill="currentColor"/><circle cx="60" cy="60" r="11" fill="currentColor"/><circle cx="60" cy="20" r="4" fill="currentColor"/><circle cx="20" cy="60" r="4" fill="currentColor"/><circle cx="10" cy="50" r="3" fill="currentColor"/><circle cx="50" cy="10" r="3" fill="currentColor"/><circle cx="70" cy="48" r="2.5" fill="currentColor"/><circle cx="30" cy="72" r="2.5" fill="currentColor"/><circle cx="48" cy="34" r="2.5" fill="currentColor"/>`,
+  raw:null   // for original-color mode; null => synthesize bg
+};
+let tile = {...DEFAULT};
+
+// ---- parse an uploaded SVG into {tw,th,inner,raw} ----
+function parseSVG(text){
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  const svg = doc.querySelector("svg");
+  if(!svg) throw new Error("no <svg>");
+  let tw, th;
+  const w = svg.getAttribute("width"), h = svg.getAttribute("height"), vb = svg.getAttribute("viewBox");
+  if(w && h && !w.includes("%")){ tw = parseFloat(w); th = parseFloat(h); }
+  else if(vb){ const p = vb.split(/[\s,]+/).map(Number); tw = p[2]; th = p[3]; }
+  else { tw = 100; th = 100; }
+
+  // capture full raw inner (for original-color mode)
+  const rawInner = svg.innerHTML;
+
+  // build tone-on-tone inner: drop a full-bleed background rect if present
+  const clone = svg.cloneNode(true);
+  const rects = [...clone.querySelectorAll("rect")];
+  for(const r of rects){
+    const rw = r.getAttribute("width"), rh = r.getAttribute("height");
+    const rx = parseFloat(r.getAttribute("x")||"0"), ry = parseFloat(r.getAttribute("y")||"0");
+    const coversW = rw === "100%" || Math.abs(parseFloat(rw) - tw) < 0.6;
+    const coversH = rh === "100%" || Math.abs(parseFloat(rh) - th) < 0.6;
+    if(r.id === "bg" || (coversW && coversH && rx===0 && ry===0)){ r.remove(); break; }
+  }
+  // strip comments
+  [...clone.childNodes].forEach(n => { if(n.nodeType === 8) n.remove(); });
+  const inner = clone.innerHTML.trim();
+  return { tw, th, inner, raw: rawInner };
+}
+
+// ---- recolor helper ----
+function recolor(markup, color, forceMono){
+  let s = markup.split("currentColor").join(color);
+  if(forceMono){
+    s = s.replace(/fill="(?!none)[^"]*"/g, `fill="${color}"`)
+         .replace(/stroke="(?!none)[^"]*"/g, `stroke="${color}"`);
+  }
+  return s;
+}
+
+// ---- compose the full SVG string ----
+function buildSVG(W, H){
+  const o = readOpts();
+  const useOrig = o.orig;
+  const tw = tile.tw, th = tile.th;
+  const mainInner = useOrig ? (tile.raw ?? tile.inner)
+                            : recolor(tile.inner, o.ink, o.mono);
+  const ghostInner = recolor(tile.inner, o.accent, true);
+
+  const grain = grainFilter(o);
+
+  const patMain = `<pattern id="rg_main" width="${tw}" height="${th}" patternUnits="userSpaceOnUse" patternTransform="scale(${o.scale})">${mainInner}</pattern>`;
+  const patGhost = `<pattern id="rg_ghost" width="${tw}" height="${th}" patternUnits="userSpaceOnUse" patternTransform="scale(${o.scale})">${ghostInner}</pattern>`;
+
+  const paperRect = o.transparent ? "" : `<rect width="${W}" height="${H}" fill="${o.paper}"/>`;
+  const ghostLayer = (o.ghost && !useOrig)
+    ? `<g transform="translate(${o.ox} ${o.oy})"><rect width="${W}" height="${H}" fill="url(#rg_ghost)" opacity="${o.gop}"/></g>` : "";
+  const mainOpacity = useOrig ? 1 : o.opac;
+  let grainBlend = "multiply";
+  if(o.relief > 0) grainBlend = o.spec > 0 ? "screen" : "soft-light";
+  const grainLayer = o.grain > 0
+    ? `<rect width="${W}" height="${H}" filter="url(#rg_grain)" style="mix-blend-mode:${grainBlend}" opacity="${o.grain}"/>` : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>${patMain}${patGhost}${grain}</defs>
+  ${paperRect}
+  <rect width="${W}" height="${H}" fill="url(#rg_main)" opacity="${mainOpacity}"/>
+  ${ghostLayer}
+  ${grainLayer}
+</svg>`;
+}
+
+function readOpts(){
+  return {
+    orig:$("orig").checked, mono:$("mono").checked, transparent:$("transparent").checked,
+    paper:$("paper").value, ink:$("ink").value, accent:$("accent").value,
+    scale:+$("scale").value, opac:+$("opac").value,
+    ghost:$("ghost").checked, ox:+$("ox").value, oy:+$("oy").value, gop:+$("gop").value,
+    grain:+$("grain").value, fine:+$("fine").value,
+    oct:+$("oct").value, relief:+$("relief").value, turb:$("turb").checked, elev:+$("elev").value,
+    lightcol:$("lightcol").value, spec:+$("spec").value, desat:$("desat").checked
+  };
+}
+
+// nnnoise-style grain: stitched fractal/turbulence noise, optional lighting relief
+function grainFilter(o){
+  const type = o.turb ? "turbulence" : "fractalNoise";
+  const turb = `<feTurbulence type="${type}" baseFrequency="${o.fine}" numOctaves="${o.oct}" seed="11" stitchTiles="stitch" result="t"/>`;
+  const desat = o.desat ? `<feColorMatrix type="saturate" values="0"/>` : "";
+  if(o.relief > 0){
+    if(o.spec > 0){
+      // specular highlights -> shiny grain (blend screen)
+      return `<filter id="rg_grain" x="0" y="0" width="100%" height="100%">
+        ${turb}
+        <feSpecularLighting in="t" surfaceScale="${o.relief}" specularConstant="${o.spec}" specularExponent="16" lighting-color="${o.lightcol}" result="l">
+          <feDistantLight azimuth="45" elevation="${o.elev}"/>
+        </feSpecularLighting>
+        ${desat}
+      </filter>`;
+    }
+    // diffuse matte paper relief (blend soft-light)
+    return `<filter id="rg_grain" x="0" y="0" width="100%" height="100%">
+      ${turb}
+      <feDiffuseLighting in="t" lighting-color="${o.lightcol}" surfaceScale="${o.relief}" diffuseConstant="1.1" result="l">
+        <feDistantLight azimuth="45" elevation="${o.elev}"/>
+      </feDiffuseLighting>
+      ${desat}
+    </filter>`;
+  }
+  // relief 0 = clean ink speckle (noise alpha -> dark specks)
+  return `<filter id="rg_grain" x="0" y="0" width="100%" height="100%">
+    ${turb}
+    <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.1 -0.35"/>
+  </filter>`;
+}
+
+// ---- render preview ----
+function render(){
+  // keep preview at export aspect ratio
+  const W = +$("ow").value || 620, H = +$("oh").value || 380;
+  $("stage").style.aspectRatio = `${W}/${H}`;
+  $("stage").innerHTML = buildSVG(W, H);
+  $("tileSize").textContent = `${tile.tw} × ${tile.th}`;
+  // sync value labels
+  $("scaleV").textContent = (+$("scale").value).toFixed(2);
+  $("opacV").textContent = (+$("opac").value).toFixed(2);
+  $("oxV").textContent = (+$("ox").value).toFixed(1);
+  $("oyV").textContent = (+$("oy").value).toFixed(1);
+  $("gopV").textContent = (+$("gop").value).toFixed(2);
+  $("grainV").textContent = (+$("grain").value).toFixed(2);
+  $("fineV").textContent = (+$("fine").value).toFixed(2);
+  $("octV").textContent = $("oct").value;
+  $("reliefV").textContent = (+$("relief").value).toFixed(1);
+  $("elevV").textContent = $("elev").value;
+  $("specV").textContent = (+$("spec").value).toFixed(1);
+}
+
+// ---- export ----
+let xMult = 1;
+function download(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function exportSVG(){
+  const W = +$("ow").value, H = +$("oh").value;
+  download(new Blob([buildSVG(W,H)], {type:"image/svg+xml"}), "riso-pattern.svg");
+}
+function exportPNG(){
+  const W = +$("ow").value, H = +$("oh").value;
+  const svg = buildSVG(W,H);
+  const img = new Image();
+  const blob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = W*xMult; c.height = H*xMult;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => download(b, `riso-pattern@${xMult}x.png`), "image/png");
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = () => { $("msg").textContent = "PNG 輸出失敗:此 SVG 可能含外部資源。"; URL.revokeObjectURL(url); };
+  img.src = url;
+}
+
+// ---- wire up ----
+function loadText(text){
+  try{ tile = parseSVG(text); render(); $("msg").textContent = "已載入。換色由「墨色」控制(圖案層需用 currentColor)。"; }
+  catch(e){ $("msg").textContent = "讀取失敗:不是有效的 SVG。"; }
+}
+$("file").addEventListener("change", e => { const f=e.target.files[0]; if(f) f.text().then(loadText); });
+$("drop").addEventListener("click", ()=>$("file").click());
+["dragover","dragenter"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.add("over");}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.remove("over");}));
+$("drop").addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(loadText); });
+
+document.querySelectorAll("input").forEach(el => el.addEventListener("input", render));
+$("seg").addEventListener("click", e=>{ if(e.target.dataset.x){ xMult=+e.target.dataset.x;
+  $("seg").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b===e.target)); }});
+$("png").addEventListener("click", exportPNG);
+$("svg").addEventListener("click", exportSVG);
+$("copy").addEventListener("click", ()=>{ const W=+$("ow").value,H=+$("oh").value;
+  navigator.clipboard.writeText(buildSVG(W,H)).then(()=>$("msg").textContent="已複製 SVG 原始碼到剪貼簿。"); });
+
+render();
+</script>
+</body>
+</html>
