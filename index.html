@@ -14,8 +14,7 @@
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ font-family:"Space Mono",ui-monospace,monospace; color:var(--text);
-        background:var(--paper); min-height:100vh;
-        background-image:radial-gradient(circle, rgba(43,75,143,.05) .5px, transparent .5px); background-size:4px 4px; }
+        background:#eceff3; min-height:100vh; }
   header{ padding:18px 24px; border-bottom:1.5px solid var(--ink); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
   header h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:22px; color:var(--ink); text-shadow:1.5px 1.5px 0 var(--accent); }
   header .sub{ font-size:11px; opacity:.6; letter-spacing:.04em; }
@@ -25,8 +24,8 @@
 
   /* preview */
   .stage-wrap{ padding:28px; display:flex; align-items:center; justify-content:center; }
-  .stage{ width:100%; max-width:680px; aspect-ratio:620/380; border:1.5px solid var(--ink);
-          box-shadow:7px 7px 0 rgba(43,75,143,.45); overflow:hidden; position:relative;
+  .stage{ width:100%; max-width:680px; aspect-ratio:620/380; border:1.5px solid #565c66;
+          overflow:hidden; position:relative;
           background-image:linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%);
           background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; }
   .stage svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
