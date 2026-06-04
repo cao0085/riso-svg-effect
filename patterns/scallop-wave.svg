@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <rect id="bg" width="240" height="240" fill="#f4edda"/>
+  <g fill="currentColor">
+    <path d="M0 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0v20H0z"/>
+    <path d="M-30 60a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0V80H-30z"/>
+    <path d="M0 120a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0v20H0z"/>
+    <path d="M-30 180a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0v20H-30z"/>
+    <path d="M0 240a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0a30 30 0 0 0 60 0v20H0z"/>
+    <circle cx="30" cy="26" r="5"/>
+    <circle cx="90" cy="26" r="5"/>
+    <circle cx="150" cy="26" r="5"/>
+    <circle cx="210" cy="26" r="5"/>
+    <circle cx="0" cy="86" r="5"/>
+    <circle cx="60" cy="86" r="5"/>
+    <circle cx="120" cy="86" r="5"/>
+    <circle cx="180" cy="86" r="5"/>
+    <circle cx="240" cy="86" r="5"/>
+    <circle cx="30" cy="146" r="5"/>
+    <circle cx="90" cy="146" r="5"/>
+    <circle cx="150" cy="146" r="5"/>
+    <circle cx="210" cy="146" r="5"/>
+    <circle cx="0" cy="206" r="5"/>
+    <circle cx="60" cy="206" r="5"/>
+    <circle cx="120" cy="206" r="5"/>
+    <circle cx="180" cy="206" r="5"/>
+    <circle cx="240" cy="206" r="5"/>
+    <circle cx="52" cy="52" r="3"/>
+    <circle cx="188" cy="52" r="3"/>
+    <circle cx="104" cy="112" r="3"/>
+    <circle cx="156" cy="172" r="3"/>
+    <circle cx="76" cy="196" r="3"/>
+  </g>
+</svg>

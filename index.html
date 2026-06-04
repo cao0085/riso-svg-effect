@@ -48,6 +48,7 @@
   .row .val{ width:42px; text-align:right; opacity:.7; font-size:11px; }
   .row input[type=checkbox]{ width:16px; height:16px; accent-color:var(--ink); }
   .btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  select{ width:100%; border:1.5px solid var(--ink); background:#fff; padding:7px 8px; font-family:inherit; font-size:12px; }
   button{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:12px; cursor:pointer;
           border:1.5px solid var(--ink); background:var(--ink); color:var(--paper); padding:9px 8px; box-shadow:2px 2px 0 rgba(43,75,143,.5); }
   button.ghost{ background:#fff; color:var(--ink); }
@@ -142,6 +143,26 @@
 "use strict";
 const $ = id => document.getElementById(id);
 
+function initPresetUI(){
+  const sourceHeading = [...document.querySelectorAll(".grp h3")].find(el => el.textContent.includes("Source"));
+  if(!sourceHeading || $("presetSelect")) return;
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="row" style="display:block">
+      <label for="presetSelect" style="display:block;margin-bottom:6px">Preset pattern</label>
+      <select id="presetSelect">
+        <option value="">Default dots</option>
+      </select>
+    </div>
+    <div class="btns" style="margin-bottom:10px">
+      <button id="loadPreset" class="ghost" type="button">Load Preset</button>
+      <button id="applyPalette" class="ghost" type="button">Apply Palette</button>
+    </div>
+    <p class="note" id="presetMeta">Load \`patterns/index.json\` presets for seamless SVG tiles and palette suggestions.</p>
+  `;
+  sourceHeading.insertAdjacentElement("afterend", wrap);
+}
+
 // ---- default sample tile (the polka dots, 80x80, currentColor) ----
 const DEFAULT = {
   tw:80, th:80,
@@ -149,6 +170,8 @@ const DEFAULT = {
   raw:null   // for original-color mode; null => synthesize bg
 };
 let tile = {...DEFAULT};
+let presetIndex = null;
+let activePreset = null;
 
 // ---- parse an uploaded SVG into {tw,th,inner,raw} ----
 function parseSVG(text){
@@ -178,6 +201,22 @@ function parseSVG(text){
   [...clone.childNodes].forEach(n => { if(n.nodeType === 8) n.remove(); });
   const inner = clone.innerHTML.trim();
   return { tw, th, inner, raw: rawInner };
+}
+
+function sanitizeForMono(text){
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  const svg = doc.querySelector("svg");
+  if(!svg) return text;
+  const bg = svg.querySelector("#bg");
+  if(bg) bg.setAttribute("fill", "none");
+  const nodes = svg.querySelectorAll("*");
+  nodes.forEach(node => {
+    if(node !== bg){
+      if(node.hasAttribute("fill") && node.getAttribute("fill") !== "none") node.setAttribute("fill", "currentColor");
+      if(node.hasAttribute("stroke") && node.getAttribute("stroke") !== "none") node.setAttribute("stroke", "currentColor");
+    }
+  });
+  return svg.outerHTML;
 }
 
 // ---- recolor helper ----
@@ -287,6 +326,82 @@ function render(){
   $("specV").textContent = (+$("spec").value).toFixed(1);
 }
 
+function updatePresetMeta(){
+  const meta = $("presetMeta");
+  if(!meta) return;
+  if(!activePreset){
+    meta.textContent = "Using built-in default dots. Load `patterns/index.json` presets for seamless SVG tiles and palette suggestions.";
+    return;
+  }
+  const palettes = (activePreset.recommendedPalettes || []).map(p => p.name).join(", ");
+  meta.textContent = `${activePreset.name}: ${activePreset.summary} Suggested palettes: ${palettes}.`;
+}
+
+async function loadPresetIndex(){
+  try{
+    const res = await fetch("./patterns/index.json", {cache:"no-store"});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    presetIndex = await res.json();
+    const select = $("presetSelect");
+    if(!select) return;
+    presetIndex.patterns.forEach(pattern => {
+      const opt = document.createElement("option");
+      opt.value = pattern.id;
+      opt.textContent = pattern.name;
+      select.appendChild(opt);
+    });
+    $("presetMeta").textContent = "Preset index loaded. Choose a pattern and click Load Preset.";
+  }catch(err){
+    const meta = $("presetMeta");
+    if(meta) meta.textContent = `Preset index unavailable: ${err.message}`;
+  }
+}
+
+function getSelectedPreset(){
+  if(!presetIndex) return null;
+  return presetIndex.patterns.find(p => p.id === $("presetSelect").value) || null;
+}
+
+async function loadPresetPattern(){
+  const pattern = getSelectedPreset();
+  if(!pattern){
+    activePreset = null;
+    tile = {...DEFAULT};
+    render();
+    updatePresetMeta();
+    return;
+  }
+  const base = presetIndex.basePath || "./patterns/";
+  const res = await fetch(`${base}${pattern.file}`, {cache:"no-store"});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  tile = parseSVG(sanitizeForMono(text));
+  activePreset = pattern;
+  if(typeof pattern.recommendedScale === "number") $("scale").value = pattern.recommendedScale;
+  if(typeof pattern.recommendedOpacity === "number") $("opac").value = pattern.recommendedOpacity;
+  if(typeof pattern.recommendedGhost === "boolean") $("ghost").checked = pattern.recommendedGhost;
+  if(typeof pattern.recommendedGhostOpacity === "number") $("gop").value = pattern.recommendedGhostOpacity;
+  const palette = pattern.recommendedPalettes && pattern.recommendedPalettes[0];
+  if(palette){
+    $("paper").value = palette.paper;
+    $("ink").value = palette.ink;
+    $("accent").value = palette.accent;
+  }
+  render();
+  updatePresetMeta();
+}
+
+function applyPresetPalette(){
+  const pattern = getSelectedPreset();
+  if(!pattern || !pattern.recommendedPalettes?.length) return;
+  const palette = pattern.recommendedPalettes[0];
+  $("paper").value = palette.paper;
+  $("ink").value = palette.ink;
+  $("accent").value = palette.accent;
+  render();
+  updatePresetMeta();
+}
+
 // ---- export ----
 let xMult = 1;
 function download(blob, name){
@@ -321,11 +436,15 @@ function loadText(text){
   try{ tile = parseSVG(text); render(); $("msg").textContent = "已載入。換色由「墨色」控制(圖案層需用 currentColor)。"; }
   catch(e){ $("msg").textContent = "讀取失敗:不是有效的 SVG。"; }
 }
+initPresetUI();
 $("file").addEventListener("change", e => { const f=e.target.files[0]; if(f) f.text().then(loadText); });
 $("drop").addEventListener("click", ()=>$("file").click());
 ["dragover","dragenter"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.add("over");}));
 ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.remove("over");}));
 $("drop").addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(loadText); });
+if($("loadPreset")) $("loadPreset").addEventListener("click", ()=>loadPresetPattern().catch(err => $("msg").textContent = `Preset load failed: ${err.message}`));
+if($("applyPalette")) $("applyPalette").addEventListener("click", applyPresetPalette);
+if($("presetSelect")) $("presetSelect").addEventListener("change", updatePresetMeta);
 
 document.querySelectorAll("input").forEach(el => el.addEventListener("input", render));
 $("seg").addEventListener("click", e=>{ if(e.target.dataset.x){ xMult=+e.target.dataset.x;
@@ -336,6 +455,7 @@ $("copy").addEventListener("click", ()=>{ const W=+$("ow").value,H=+$("oh").valu
   navigator.clipboard.writeText(buildSVG(W,H)).then(()=>$("msg").textContent="已複製 SVG 原始碼到剪貼簿。"); });
 
 render();
+loadPresetIndex();
 </script>
 </body>
 </html>

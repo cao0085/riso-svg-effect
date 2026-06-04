@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "basePath": "./patterns/",
+  "patterns": [
+    {
+      "id": "bullseye-constellation",
+      "name": "Bullseye Constellation",
+      "file": "bullseye-constellation.svg",
+      "tileWidth": 240,
+      "tileHeight": 240,
+      "summary": "Bold target rings, arc fragments, and satellite dots. Reads like a geometric riso poster texture.",
+      "useCases": ["hero background", "editorial poster texture", "statement landing section"],
+      "recommendedScale": 0.9,
+      "recommendedOpacity": 0.16,
+      "recommendedGhost": true,
+      "recommendedGhostOpacity": 0.05,
+      "recommendedPalettes": [
+        { "name": "Federal Blue", "paper": "#f1ead2", "ink": "#214c97", "accent": "#d74f70" },
+        { "name": "Tomato Night", "paper": "#f5ebd8", "ink": "#c34a36", "accent": "#243746" },
+        { "name": "Spruce Pink", "paper": "#efe4cf", "ink": "#35584f", "accent": "#d7758b" }
+      ]
+    },
+    {
+      "id": "scallop-wave",
+      "name": "Scallop Wave",
+      "file": "scallop-wave.svg",
+      "tileWidth": 240,
+      "tileHeight": 240,
+      "summary": "Fish-scale arcs with a light dot rhythm. Softer and more textile-like.",
+      "useCases": ["tone-on-tone paper texture", "packaging background", "zine spread backdrop"],
+      "recommendedScale": 0.85,
+      "recommendedOpacity": 0.14,
+      "recommendedGhost": false,
+      "recommendedGhostOpacity": 0,
+      "recommendedPalettes": [
+        { "name": "Navy Cream", "paper": "#f4edda", "ink": "#2a4374", "accent": "#be5a6d" },
+        { "name": "Forest Coral", "paper": "#efe6d2", "ink": "#2f5a4d", "accent": "#d8685e" },
+        { "name": "Charcoal Ochre", "paper": "#f0e1bb", "ink": "#34363b", "accent": "#d58a2c" }
+      ]
+    },
+    {
+      "id": "diagonal-hatch-orbit",
+      "name": "Diagonal Hatch Orbit",
+      "file": "diagonal-hatch-orbit.svg",
+      "tileWidth": 240,
+      "tileHeight": 240,
+      "summary": "Angular hatch strokes broken by orbit rings. More aggressive and zine-like.",
+      "useCases": ["punk zine panel", "cover texture", "callout block background"],
+      "recommendedScale": 1,
+      "recommendedOpacity": 0.12,
+      "recommendedGhost": true,
+      "recommendedGhostOpacity": 0.04,
+      "recommendedPalettes": [
+        { "name": "Ink Red", "paper": "#f1ebd5", "ink": "#1f2430", "accent": "#cc4b4b" },
+        { "name": "Cobalt Peel", "paper": "#f7efcb", "ink": "#2558a5", "accent": "#d98b24" },
+        { "name": "Moss Rose", "paper": "#f0e6d1", "ink": "#4b6041", "accent": "#cf6a82" }
+      ]
+    }
+  ]
+}
