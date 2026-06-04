@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+  <rect id="bg" width="30" height="30" fill="#f3eccf"/>
+  <g>
+    <path d='M0 0v9.375L5.625 15H15L0 0zm15 15h9.375L30 9.375V0L15 15z' fill="currentColor"/>
+    <path d='M15 15L0 30h9.375L15 24.375 20.625 30H30z' fill="currentColor"/>
+  </g>
+</svg>

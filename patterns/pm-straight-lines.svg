@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="80" viewBox="0 0 20 80">
+  <rect id="bg" width="20" height="80" fill="#f3eccf"/>
+  <g>
+    <path d='M0 10h20z'  fill="none" stroke="currentColor" stroke-width="1"/>
+    <path d='M0 30h20z'  fill="none" stroke="currentColor" stroke-width="1"/>
+    <path d='M0 50h20z'  fill="none" stroke="currentColor" stroke-width="1"/>
+    <path d='M0 70h20z'  fill="none" stroke="currentColor" stroke-width="1"/>
+  </g>
+</svg>

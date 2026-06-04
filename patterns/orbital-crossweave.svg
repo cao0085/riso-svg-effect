@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect id="bg" width="320" height="320" fill="#f3ead7"/>
+  <g fill="currentColor">
+    <rect x="28" y="0" width="24" height="320"/>
+    <rect x="108" y="0" width="24" height="320"/>
+    <rect x="188" y="0" width="24" height="320"/>
+    <rect x="268" y="0" width="24" height="320"/>
+    <rect x="0" y="28" width="320" height="24"/>
+    <rect x="0" y="108" width="320" height="24"/>
+    <rect x="0" y="188" width="320" height="24"/>
+    <rect x="0" y="268" width="320" height="24"/>
+    <circle cx="40" cy="40" r="26"/>
+    <circle cx="120" cy="40" r="14"/>
+    <circle cx="200" cy="40" r="26"/>
+    <circle cx="280" cy="40" r="14"/>
+    <circle cx="40" cy="120" r="14"/>
+    <circle cx="120" cy="120" r="26"/>
+    <circle cx="200" cy="120" r="14"/>
+    <circle cx="280" cy="120" r="26"/>
+    <circle cx="40" cy="200" r="26"/>
+    <circle cx="120" cy="200" r="14"/>
+    <circle cx="200" cy="200" r="26"/>
+    <circle cx="280" cy="200" r="14"/>
+    <circle cx="40" cy="280" r="14"/>
+    <circle cx="120" cy="280" r="26"/>
+    <circle cx="200" cy="280" r="14"/>
+    <circle cx="280" cy="280" r="26"/>
+    <circle cx="40" cy="40" r="8"/>
+    <circle cx="200" cy="40" r="8"/>
+    <circle cx="120" cy="120" r="8"/>
+    <circle cx="280" cy="120" r="8"/>
+    <circle cx="40" cy="200" r="8"/>
+    <circle cx="200" cy="200" r="8"/>
+    <circle cx="120" cy="280" r="8"/>
+    <circle cx="280" cy="280" r="8"/>
+  </g>
+</svg>
