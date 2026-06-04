@@ -145,20 +145,24 @@ const $ = id => document.getElementById(id);
 
 function initPresetUI(){
   const sourceHeading = [...document.querySelectorAll(".grp h3")].find(el => el.textContent.includes("Source"));
-  if(!sourceHeading || $("presetSelect")) return;
+  if(!sourceHeading || $("folderSelect")) return;
   const wrap = document.createElement("div");
   wrap.innerHTML = `
     <div class="row" style="display:block">
-      <label for="presetSelect" style="display:block;margin-bottom:6px">Preset pattern</label>
-      <select id="presetSelect">
+      <label for="folderSelect" style="display:block;margin-bottom:6px">Folder</label>
+      <select id="folderSelect"></select>
+    </div>
+    <div class="row" style="display:block">
+      <label for="svgSelect" style="display:block;margin-bottom:6px">SVG</label>
+      <select id="svgSelect">
         <option value="">Default dots</option>
       </select>
     </div>
-    <div class="btns" style="margin-bottom:10px">
-      <button id="loadPreset" class="ghost" type="button">Load Preset</button>
-      <button id="applyPalette" class="ghost" type="button">Apply Palette</button>
+    <div class="row" style="display:block">
+      <label for="themeSelect" style="display:block;margin-bottom:6px">Theme</label>
+      <select id="themeSelect"></select>
     </div>
-    <p class="note" id="presetMeta">Load \`patterns/index.json\` presets for seamless SVG tiles and palette suggestions.</p>
+    <p class="note" id="presetMeta">Load SVG files from folders and switch themes independently.</p>
   `;
   sourceHeading.insertAdjacentElement("afterend", wrap);
 }
@@ -170,8 +174,19 @@ const DEFAULT = {
   raw:null   // for original-color mode; null => synthesize bg
 };
 let tile = {...DEFAULT};
-let presetIndex = null;
-let activePreset = null;
+let fileManifest = null;
+let activeFile = "";
+const svgCache = new Map();
+const THEMES = [
+  { id:"federal-blue", name:"Federal Blue", paper:"#f1ead2", ink:"#214c97", accent:"#d74f70" },
+  { id:"tomato-night", name:"Tomato Night", paper:"#f5ebd8", ink:"#c34a36", accent:"#243746" },
+  { id:"spruce-pink", name:"Spruce Pink", paper:"#efe4cf", ink:"#35584f", accent:"#d7758b" },
+  { id:"navy-cream", name:"Navy Cream", paper:"#f4edda", ink:"#2a4374", accent:"#be5a6d" },
+  { id:"forest-coral", name:"Forest Coral", paper:"#efe6d2", ink:"#2f5a4d", accent:"#d8685e" },
+  { id:"ink-red", name:"Ink Red", paper:"#f1ebd5", ink:"#1f2430", accent:"#cc4b4b" },
+  { id:"cobalt-peel", name:"Cobalt Peel", paper:"#f7efcb", ink:"#2558a5", accent:"#d98b24" },
+  { id:"moss-rose", name:"Moss Rose", paper:"#f0e6d1", ink:"#4b6041", accent:"#cf6a82" }
+];
 
 // ---- parse an uploaded SVG into {tw,th,inner,raw} ----
 function parseSVG(text){
@@ -329,75 +344,118 @@ function render(){
 function updatePresetMeta(){
   const meta = $("presetMeta");
   if(!meta) return;
-  if(!activePreset){
-    meta.textContent = "Using built-in default dots. Load `patterns/index.json` presets for seamless SVG tiles and palette suggestions.";
+  const theme = THEMES.find(t => t.id === $("themeSelect")?.value);
+  if(!activeFile){
+    meta.textContent = `Using built-in default dots.${theme ? ` Theme: ${theme.name}.` : ""}`;
     return;
   }
-  const palettes = (activePreset.recommendedPalettes || []).map(p => p.name).join(", ");
-  meta.textContent = `${activePreset.name}: ${activePreset.summary} Suggested palettes: ${palettes}.`;
+  meta.textContent = `${activeFile} loaded.${theme ? ` Theme: ${theme.name}.` : ""}`;
 }
 
-async function loadPresetIndex(){
-  try{
-    const res = await fetch("./patterns/index.json", {cache:"no-store"});
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    presetIndex = await res.json();
-    const select = $("presetSelect");
-    if(!select) return;
-    presetIndex.patterns.forEach(pattern => {
+function fileFolder(file){
+  const parts = file.split("/");
+  return parts.length > 1 ? parts[0] : "__root__";
+}
+
+function folderLabel(folder){
+  if(folder === "__root__") return "Built-in";
+  return folder.replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function fileLabel(file){
+  const base = file.split("/").pop() || file;
+  return base.replace(/\.svg$/i, "");
+}
+
+function initThemeUI(){
+  const select = $("themeSelect");
+  if(!select || select.options.length) return;
+  THEMES.forEach(theme => {
+    const opt = document.createElement("option");
+    opt.value = theme.id;
+    opt.textContent = theme.name;
+    select.appendChild(opt);
+  });
+  select.value = THEMES[0].id;
+  applyTheme();
+}
+
+function applyTheme(){
+  const theme = THEMES.find(t => t.id === $("themeSelect")?.value) || THEMES[0];
+  $("paper").value = theme.paper;
+  $("ink").value = theme.ink;
+  $("accent").value = theme.accent;
+  render();
+  updatePresetMeta();
+}
+
+function populateFolderSelect(){
+  const folderSelect = $("folderSelect");
+  if(!folderSelect || !fileManifest) return;
+  folderSelect.innerHTML = "";
+  const folders = [...new Set(fileManifest.files.map(fileFolder))].sort((a, b) => folderLabel(a).localeCompare(folderLabel(b)));
+  folders.forEach(folder => {
+    const opt = document.createElement("option");
+    opt.value = folder;
+    opt.textContent = folderLabel(folder);
+    folderSelect.appendChild(opt);
+  });
+  folderSelect.value = folders.includes("__root__") ? "__root__" : folders[0];
+}
+
+function populateSvgSelect(){
+  const svgSelect = $("svgSelect");
+  const folder = $("folderSelect")?.value || "__root__";
+  if(!svgSelect || !fileManifest) return;
+  svgSelect.innerHTML = `<option value="">Default dots</option>`;
+  fileManifest.files
+    .filter(file => fileFolder(file) === folder)
+    .sort((a, b) => fileLabel(a).localeCompare(fileLabel(b)))
+    .forEach(file => {
       const opt = document.createElement("option");
-      opt.value = pattern.id;
-      opt.textContent = pattern.name;
-      select.appendChild(opt);
+      opt.value = file;
+      opt.textContent = fileLabel(file);
+      svgSelect.appendChild(opt);
     });
-    $("presetMeta").textContent = "Preset index loaded. Choose a pattern and click Load Preset.";
+}
+
+async function loadFileManifest(){
+  try{
+    const res = await fetch("./patterns/files.json", {cache:"no-store"});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    fileManifest = await res.json();
+    populateFolderSelect();
+    populateSvgSelect();
+    $("presetMeta").textContent = `Caching ${fileManifest.files.length} SVG files...`;
+    await Promise.all(fileManifest.files.map(async file => {
+      const fileRes = await fetch(`${fileManifest.basePath || "./patterns/"}${file}`, {cache:"no-store"});
+      if(!fileRes.ok) throw new Error(`HTTP ${fileRes.status} on ${file}`);
+      svgCache.set(file, await fileRes.text());
+    }));
+    $("presetMeta").textContent = `Cached ${svgCache.size} SVG files.`;
+    updatePresetMeta();
   }catch(err){
     const meta = $("presetMeta");
-    if(meta) meta.textContent = `Preset index unavailable: ${err.message}`;
+    if(meta) meta.textContent = `SVG file list unavailable: ${err.message}`;
   }
 }
 
-function getSelectedPreset(){
-  if(!presetIndex) return null;
-  return presetIndex.patterns.find(p => p.id === $("presetSelect").value) || null;
-}
-
-async function loadPresetPattern(){
-  const pattern = getSelectedPreset();
-  if(!pattern){
-    activePreset = null;
+function loadSelectedSvg(){
+  const file = $("svgSelect")?.value;
+  if(!file){
+    activeFile = "";
     tile = {...DEFAULT};
     render();
     updatePresetMeta();
     return;
   }
-  const base = presetIndex.basePath || "./patterns/";
-  const res = await fetch(`${base}${pattern.file}`, {cache:"no-store"});
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
-  tile = parseSVG(sanitizeForMono(text));
-  activePreset = pattern;
-  if(typeof pattern.recommendedScale === "number") $("scale").value = pattern.recommendedScale;
-  if(typeof pattern.recommendedOpacity === "number") $("opac").value = pattern.recommendedOpacity;
-  if(typeof pattern.recommendedGhost === "boolean") $("ghost").checked = pattern.recommendedGhost;
-  if(typeof pattern.recommendedGhostOpacity === "number") $("gop").value = pattern.recommendedGhostOpacity;
-  const palette = pattern.recommendedPalettes && pattern.recommendedPalettes[0];
-  if(palette){
-    $("paper").value = palette.paper;
-    $("ink").value = palette.ink;
-    $("accent").value = palette.accent;
+  const text = svgCache.get(file);
+  if(!text){
+    $("msg").textContent = `SVG not cached: ${file}`;
+    return;
   }
-  render();
-  updatePresetMeta();
-}
-
-function applyPresetPalette(){
-  const pattern = getSelectedPreset();
-  if(!pattern || !pattern.recommendedPalettes?.length) return;
-  const palette = pattern.recommendedPalettes[0];
-  $("paper").value = palette.paper;
-  $("ink").value = palette.ink;
-  $("accent").value = palette.accent;
+  tile = parseSVG(sanitizeForMono(text));
+  activeFile = file;
   render();
   updatePresetMeta();
 }
@@ -437,14 +495,15 @@ function loadText(text){
   catch(e){ $("msg").textContent = "讀取失敗:不是有效的 SVG。"; }
 }
 initPresetUI();
+initThemeUI();
 $("file").addEventListener("change", e => { const f=e.target.files[0]; if(f) f.text().then(loadText); });
 $("drop").addEventListener("click", ()=>$("file").click());
 ["dragover","dragenter"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.add("over");}));
 ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev, e=>{e.preventDefault();$("drop").classList.remove("over");}));
 $("drop").addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(loadText); });
-if($("loadPreset")) $("loadPreset").addEventListener("click", ()=>loadPresetPattern().catch(err => $("msg").textContent = `Preset load failed: ${err.message}`));
-if($("applyPalette")) $("applyPalette").addEventListener("click", applyPresetPalette);
-if($("presetSelect")) $("presetSelect").addEventListener("change", updatePresetMeta);
+if($("folderSelect")) $("folderSelect").addEventListener("change", () => { populateSvgSelect(); loadSelectedSvg(); });
+if($("svgSelect")) $("svgSelect").addEventListener("change", loadSelectedSvg);
+if($("themeSelect")) $("themeSelect").addEventListener("change", applyTheme);
 
 document.querySelectorAll("input").forEach(el => el.addEventListener("input", render));
 $("seg").addEventListener("click", e=>{ if(e.target.dataset.x){ xMult=+e.target.dataset.x;
@@ -455,7 +514,7 @@ $("copy").addEventListener("click", ()=>{ const W=+$("ow").value,H=+$("oh").valu
   navigator.clipboard.writeText(buildSVG(W,H)).then(()=>$("msg").textContent="已複製 SVG 原始碼到剪貼簿。"); });
 
 render();
-loadPresetIndex();
+loadFileManifest();
 </script>
 </body>
 </html>
