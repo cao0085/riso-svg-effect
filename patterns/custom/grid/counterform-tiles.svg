@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <rect id="bg" width="96" height="96" fill="#f3eccf"/>
+  <g fill="currentColor">
+    <path d="M0 0h24v12h12v24H12v-12H0zM72 0h24v24H84v12H60V12h12zM0 72h12V60h24v24H24v12H0zM60 60h24v12h12v24H72V84H60z"/>
+    <path d="M36 36h24v24H36zM24 0h24v12H36v12H24zM48 0h24v24H60V12H48zM0 24h24v12H12v12H0zM72 24h24v24H84V36H72zM0 48h12v12h12v12H0zM84 48h12v24H72V60h12zM24 84h12V72h12v24H24zM48 72h12v12h12v12H48z"/>
+  </g>
+</svg>
